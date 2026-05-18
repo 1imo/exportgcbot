@@ -10,7 +10,7 @@ export class BotController {
     private readonly groupPicker: GroupPickerUseCase,
     private readonly notifications: ClientNotificationService,
     private readonly logger: Logger
-  ) {}
+  ) { }
 
   async handleStart(userId: number): Promise<void> {
     await this.guard(userId, async () => {

@@ -68,11 +68,11 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT COUNT(*) AS value FROM analytics_events WHERE $__timeFilter(created_at) AND event = 'moderation_decision';",
+          "rawSql": "SELECT COUNT(*) AS value FROM analytics_events WHERE $__timeFilter(created_at) AND event = 'group_export_completed';",
           "refId": "A"
         }
       ],
-      "title": "Moderation decisions",
+      "title": "Group exports completed",
       "type": "stat"
     },
     {
@@ -87,11 +87,11 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT COUNT(*) AS value FROM action_logs WHERE $__timeFilter(created_at);",
+          "rawSql": "SELECT COALESCE(SUM(member_count), 0) AS value FROM group_member_exports WHERE $__timeFilter(created_at);",
           "refId": "A"
         }
       ],
-      "title": "Action logs",
+      "title": "Members exported (window)",
       "type": "stat"
     },
     {
@@ -106,7 +106,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT COUNT(*) AS value FROM sessions WHERE active = 1;",
+          "rawSql": "SELECT COUNT(*) AS value FROM sessions WHERE active = TRUE;",
           "refId": "A"
         }
       ],
@@ -125,7 +125,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT $__timeGroupAlias(created_at, '5m'), event AS metric, COUNT(*) AS value FROM analytics_events WHERE $__timeFilter(created_at) GROUP BY 1,2 ORDER BY 1;",
+          "rawSql": "SELECT $__timeGroupAlias(created_at, '5m'), event AS metric, COUNT(*) AS value FROM analytics_events WHERE $__timeFilter(created_at) GROUP BY 1, 2 ORDER BY 1;",
           "refId": "A"
         }
       ],
@@ -134,9 +134,36 @@
     },
     {
       "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
-      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" } }, "overrides": [] },
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
       "id": 6,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(created_at, '5m'), 'exports' AS metric, COUNT(*) AS value FROM group_member_exports WHERE $__timeFilter(created_at) GROUP BY 1 ORDER BY 1;",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(created_at, '5m'), 'members' AS metric, COALESCE(SUM(member_count), 0) AS value FROM group_member_exports WHERE $__timeFilter(created_at) GROUP BY 1 ORDER BY 1;",
+          "refId": "B"
+        }
+      ],
+      "title": "Exports and members over time",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "id": 7,
       "options": { "showHeader": true },
       "targets": [
         {
@@ -154,8 +181,27 @@
     {
       "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
       "fieldConfig": { "defaults": {}, "overrides": [] },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
-      "id": 7,
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "id": 8,
+      "options": { "showHeader": true },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT event, COUNT(*) AS n FROM analytics_events WHERE $__timeFilter(created_at) AND event IN ('onboarding_start', 'onboarding_completed', 'onboarding_failed', 'group_picker_opened', 'group_export_completed') GROUP BY event ORDER BY n DESC;",
+          "refId": "A"
+        }
+      ],
+      "title": "Onboarding & export funnel",
+      "type": "table"
+    },
+    {
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
+      "id": 9,
       "options": { "showHeader": true },
       "targets": [
         {
@@ -173,8 +219,8 @@
     {
       "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
       "fieldConfig": { "defaults": {}, "overrides": [] },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
-      "id": 8,
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
+      "id": 10,
       "options": { "showHeader": true },
       "targets": [
         {
@@ -182,18 +228,18 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT created_at, sender_id, chat_id, decision_json FROM action_logs WHERE $__timeFilter(created_at) ORDER BY created_at DESC LIMIT 200;",
+          "rawSql": "SELECT created_at, requested_by_user_id, requested_by_username, group_telegram_id, group_title, member_count FROM group_member_exports WHERE $__timeFilter(created_at) ORDER BY created_at DESC LIMIT 200;",
           "refId": "A"
         }
       ],
-      "title": "Recent moderation actions",
+      "title": "Recent group exports",
       "type": "table"
     },
     {
       "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
       "fieldConfig": { "defaults": {}, "overrides": [] },
-      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 20 },
-      "id": 9,
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 28 },
+      "id": 11,
       "options": { "showHeader": true },
       "targets": [
         {
@@ -205,14 +251,14 @@
           "refId": "A"
         }
       ],
-      "title": "Recent users",
+      "title": "Recent bot users",
       "type": "table"
     },
     {
       "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_NUGLABS_PGQL}" },
       "fieldConfig": { "defaults": {}, "overrides": [] },
-      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 20 },
-      "id": 10,
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 28 },
+      "id": 12,
       "options": { "showHeader": true },
       "targets": [
         {
@@ -220,17 +266,17 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT telegram_id, first_seen_at, last_seen_at FROM group_chats ORDER BY last_seen_at DESC LIMIT 100;",
+          "rawSql": "SELECT e.created_at, e.group_title, e.member_count, e.requested_by_username, COUNT(m.id) AS stored_members FROM group_member_exports e LEFT JOIN group_member_export_members m ON m.export_id = e.id WHERE $__timeFilter(e.created_at) GROUP BY e.id, e.created_at, e.group_title, e.member_count, e.requested_by_username ORDER BY e.created_at DESC LIMIT 50;",
           "refId": "A"
         }
       ],
-      "title": "Recent group chats",
+      "title": "Export volume by group",
       "type": "table"
     }
   ],
   "refresh": "30s",
   "schemaVersion": 39,
-  "tags": ["mlp", "generated-for-project"],
+  "tags": ["exportuserbot"],
   "templating": { "list": [] },
   "time": {
     "from": "now-24h",
@@ -238,8 +284,8 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "Secret chat upgrade bot analytics",
-  "uid": "mlp-analytics",
+  "title": "exportuserbot analytics",
+  "uid": "exportuserbot-analytics",
   "version": 1,
   "weekStart": ""
 }
