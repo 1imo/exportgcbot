@@ -1,0 +1,12 @@
+<!doctype html>
+<html>
+  <head><meta charset="utf-8"><title>Telegram Login Input</title></head>
+  <body style="font-family: sans-serif; max-width: 640px; margin: 40px auto;">
+    <h2>Telegram Onboarding</h2>
+    <p>{{PROMPT}}</p>
+    <form method="post" action="/auth/{{TOKEN}}">
+      <input name="value" type="text" autofocus style="width:100%;padding:10px;" />
+      <button type="submit" style="margin-top:12px;padding:10px 14px;">Submit</button>
+    </form>
+  </body>
+</html>
