@@ -229,6 +229,7 @@ export class Store {
       }
       case "group_chat_members.reconcile": {
         const [groupTelegramId, members, syncedAt] = args as [string, unknown[], string];
+        const membersJson = JSON.stringify(members);
         await this.writeQueue.enqueue(query, async () => {
           await this.backing.query(
             `INSERT INTO group_chat_members(
@@ -282,9 +283,11 @@ export class Store {
                still_in_gc = TRUE,
                last_seen_in_gc_at = EXCLUDED.last_seen_in_gc_at,
                left_at = NULL,
-               updated_at = NOW();
-
-             UPDATE group_chat_members
+               updated_at = NOW()`,
+            [groupTelegramId, membersJson, syncedAt]
+          );
+          await this.backing.query(
+            `UPDATE group_chat_members
              SET still_in_gc = FALSE,
                  left_at = COALESCE(left_at, $3::timestamptz),
                  updated_at = NOW()
@@ -294,7 +297,7 @@ export class Store {
                  SELECT m.member_user_id
                  FROM jsonb_to_recordset($2::jsonb) AS m(member_user_id bigint)
                )`,
-            [groupTelegramId, JSON.stringify(members), syncedAt]
+            [groupTelegramId, membersJson, syncedAt]
           );
         });
         this.invalidateCache();
