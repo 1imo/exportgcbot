@@ -1,3 +1,4 @@
+import type { GroupChatMembershipRepository } from "../repositories/group-chat-membership-repository.js";
 import type { GroupMemberExportRepository } from "../repositories/group-member-export-repository.js";
 import type { SessionRepository } from "../repositories/session-repository.js";
 import type { TdlibListenerService } from "../bg-services/tdlib-listener-service.js";
@@ -13,7 +14,7 @@ import {
   mainMenuKeyboard,
   truncateKeyboardLabel
 } from "../utils/bot-keyboards.js";
-import { chunkLines, formatMemberTelegramLink } from "../utils/telegram-links.js";
+import { chunkLines, formatMemberExportLine } from "../utils/telegram-links.js";
 import type { Logger } from "../utils/logger.js";
 
 type GroupOption = {
@@ -33,6 +34,7 @@ export class GroupPickerUseCase {
     private readonly sessions: SessionRepository,
     private readonly tdlib: TdlibListenerService,
     private readonly groupExport: GroupMemberExportService,
+    private readonly membership: GroupChatMembershipRepository,
     private readonly exports: GroupMemberExportRepository,
     private readonly notifications: ClientNotificationService,
     private readonly analytics: Analytics,
@@ -164,9 +166,24 @@ export class GroupPickerUseCase {
     try {
       const members = await this.groupExport.fetchMembers(client, group.chatId);
       const humans = members.filter((member) => !member.isBot);
-      await this.exports.saveExport(user, group.chatId, group.title, humans);
+      const syncedAt = new Date().toISOString();
 
-      const links = humans.map((member) => formatMemberTelegramLink(member));
+      await this.membership.registerMonitor(group.chatId, group.title, user.userId);
+      await this.membership.reconcile(group.chatId, members, syncedAt);
+
+      const participantCount =
+        (await this.groupExport.getMemberCount(client, group.chatId)) ?? humans.length;
+      await this.membership.updateAfterFullSync(group.chatId, participantCount, syncedAt);
+
+      const stillInGcByUserId = await this.membership.getStillInGcByUserId(group.chatId);
+      const humansWithPresence = humans.map((member) => ({
+        ...member,
+        stillInGc: stillInGcByUserId.get(member.userId) ?? true
+      }));
+
+      await this.exports.saveExport(user, group.chatId, group.title, humansWithPresence);
+
+      const links = humansWithPresence.map((member) => formatMemberExportLine(member));
       if (links.length === 0) {
         await this.showMainMenu(user.userId);
         await this.notifications.sendToClient(

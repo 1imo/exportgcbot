@@ -3,10 +3,12 @@ import { Store } from "./utils/db/root.js";
 import process from "node:process";
 import { AuthHttpService } from "./bg-services/auth-http-service.js";
 import { MgmtBotService } from "./bg-services/mgmt-bot-service.js";
+import { GcMembershipSyncService } from "./bg-services/gc-membership-sync-service.js";
 import { TdlibListenerService } from "./bg-services/tdlib-listener-service.js";
 import { BotController } from "./controllers/bot-controller.js";
 import { HandleUserMiddleware } from "./middleware/handle-user-middleware.js";
 import { SessionRepository } from "./repositories/session-repository.js";
+import { GroupChatMembershipRepository } from "./repositories/group-chat-membership-repository.js";
 import { GroupMemberExportRepository } from "./repositories/group-member-export-repository.js";
 import { AuthChallengeService } from "./services/auth-challenge-service.js";
 import { ClientNotificationService } from "./services/client-notification-service.js";
@@ -27,6 +29,7 @@ export async function startApp(): Promise<void> {
   const handleUserMiddleware = new HandleUserMiddleware(store, analytics);
   const sessions = new SessionRepository(store);
   const groupExports = new GroupMemberExportRepository(store);
+  const groupMembership = new GroupChatMembershipRepository(store);
   const authChallenges = new AuthChallengeService();
   const notifications = new ClientNotificationService(logger);
   const groupMemberExport = new GroupMemberExportService(logger);
@@ -39,10 +42,21 @@ export async function startApp(): Promise<void> {
     logger
   );
 
+  const gcMembershipSync = new GcMembershipSyncService(
+    env.GC_SYNC_COUNT_INTERVAL_MS,
+    env.GC_SYNC_FULL_INTERVAL_MS,
+    tdlibService,
+    groupMemberExport,
+    groupMembership,
+    analytics,
+    logger
+  );
+
   const groupPicker = new GroupPickerUseCase(
     sessions,
     tdlibService,
     groupMemberExport,
+    groupMembership,
     groupExports,
     notifications,
     analytics,
@@ -75,9 +89,11 @@ export async function startApp(): Promise<void> {
   await tdlibService.startActiveSessions(await sessions.listActive());
   await authHttpService.start();
   await botService.start();
+  gcMembershipSync.start();
 
   const shutdown = async () => {
     logger.info("shutdown_requested");
+    gcMembershipSync.stop();
     await botService.stop();
     await authHttpService.stop();
     await tdlibService.stop();

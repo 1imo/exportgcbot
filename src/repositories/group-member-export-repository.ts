@@ -1,4 +1,4 @@
-import type { GroupMember, ServiceUser } from "../types.js";
+import type { GroupMemberWithPresence, ServiceUser } from "../types.js";
 import type { Store } from "../utils/db/root.js";
 
 export class GroupMemberExportRepository {
@@ -8,7 +8,7 @@ export class GroupMemberExportRepository {
     requestedBy: ServiceUser,
     groupTelegramId: string,
     groupTitle: string,
-    members: GroupMember[]
+    members: GroupMemberWithPresence[]
   ): Promise<void> {
     const payload = members.map((member) => ({
       member_user_id: member.userId,
@@ -17,7 +17,8 @@ export class GroupMemberExportRepository {
       last_name: member.lastName,
       is_bot: member.isBot,
       is_premium: member.isPremium ?? null,
-      phone: member.phone ?? ""
+      phone: member.phone ?? "",
+      still_in_gc: member.stillInGc
     }));
 
     await this.store.write(

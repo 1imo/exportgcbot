@@ -45,7 +45,9 @@ const schema = z.object({
   TELEGRAM_CONNECT_TIMEOUT_MS: z.coerce.number().default(20000),
   AUTH_HOST_BASE: z.string().optional(),
   AUTH_HTTP_PORT: z.coerce.number().default(8787),
-  MGMT_BOT_TOKEN: z.string().optional()
+  MGMT_BOT_TOKEN: z.string().optional(),
+  GC_SYNC_COUNT_INTERVAL_MS: z.coerce.number().default(60_000),
+  GC_SYNC_FULL_INTERVAL_MS: z.coerce.number().default(300_000)
 });
 
 export type Env = z.infer<typeof schema>;

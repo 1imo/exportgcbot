@@ -56,4 +56,42 @@ export class GroupMemberExportService {
     this.logger.info("group_members_fetched", { chatId, count: members.length });
     return members;
   }
+
+  async getMemberCount(client: TelegramClient, chatId: string): Promise<number | null> {
+    try {
+      const entity = await client.getEntity(chatId);
+
+      if (entity instanceof Api.Channel) {
+        const result = await client.invoke(
+          new Api.channels.GetFullChannel({
+            channel: entity
+          })
+        );
+        if (result.fullChat instanceof Api.ChannelFull) {
+          return result.fullChat.participantsCount ?? null;
+        }
+        return null;
+      }
+
+      if (entity instanceof Api.Chat) {
+        const result = await client.invoke(
+          new Api.messages.GetFullChat({
+            chatId: entity.id
+          })
+        );
+        if (result.fullChat instanceof Api.ChatFull) {
+          const participants = result.fullChat.participants;
+          if (participants instanceof Api.ChatParticipants) {
+            return participants.participants.length;
+          }
+        }
+        return null;
+      }
+
+      return null;
+    } catch (error) {
+      this.logger.warn("group_member_count_failed", { chatId, error: String(error) });
+      return null;
+    }
+  }
 }

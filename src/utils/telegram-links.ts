@@ -1,9 +1,15 @@
-import type { GroupMember } from "../types.js";
+import type { GroupMember, GroupMemberWithPresence } from "../types.js";
 
 export function formatMemberTelegramLink(member: GroupMember): string {
   const username = member.username?.trim().replace(/^@/, "");
   if (username) return `https://t.me/${username}`;
   return `tg://user?id=${member.userId}`;
+}
+
+export function formatMemberExportLine(member: GroupMemberWithPresence): string {
+  const link = formatMemberTelegramLink(member);
+  const inGc = member.stillInGc ? "true" : "false";
+  return `${link} | in_gc: ${inGc}`;
 }
 
 export function chunkLines(lines: string[], maxLen = 4000): string[] {

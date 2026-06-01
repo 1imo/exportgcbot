@@ -23,3 +23,17 @@ export type GroupMember = {
   isPremium?: boolean;
   phone?: string;
 };
+
+export type GroupMemberWithPresence = GroupMember & {
+  stillInGc: boolean;
+};
+
+export type GroupChatMonitor = {
+  telegramId: string;
+  groupTitle: string;
+  monitorUserId: string;
+  lastParticipantCount: number | null;
+  lastCountCheckAt: string | null;
+  lastFullSyncAt: string | null;
+  syncEnabled: boolean;
+};
